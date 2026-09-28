@@ -7,3 +7,6 @@ dist/
 
 brag-output/
 work/
+.agents/
+.claude/
+skills-lock.json
