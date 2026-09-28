@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quantum Resonator — Audio-Reactive Iridescence</title>
+</head>
+<body>
+  <div id="app">
+    <canvas id="scene-canvas"></canvas>
+
+    <header id="topbar">
+      <div id="brand">
+        <span id="brand-title">QUANTUM RESONATOR</span>
+        <span id="brand-sub">Audio-reactive iridescence · Moth Atlas engine</span>
+      </div>
+
+      <div id="status-badge" data-state="idle">
+        <span class="dot"></span>
+        <span id="status-text">QUANTUM BSDF: IDLE</span>
+      </div>
+
+      <div id="topbar-right">
+        <button id="record-btn" type="button">⏺ Record 15s Clip</button>
+        <div id="fps-badge">-- FPS</div>
+      </div>
+    </header>
+
+    <div id="rec-badge" hidden>
+      <svg viewBox="0 0 44 44" aria-hidden="true">
+        <circle class="track" cx="22" cy="22" r="19" />
+        <circle id="rec-ring" class="ring" cx="22" cy="22" r="19" />
+      </svg>
+      <span id="rec-count">15</span>
+      <span class="rec-label"><span class="rec-dot"></span>REC</span>
+    </div>
+
+    <aside id="audio-dock">
+      <div class="dock-title">Audio Resonator</div>
+      <div class="audio-buttons">
+        <button id="beat-btn" type="button" class="audio-btn">▶ Play Beat</button>
+        <button id="mic-btn" type="button" class="audio-btn">🎤 Mic</button>
+        <button id="file-btn" type="button" class="audio-btn">📂 Load Audio</button>
+        <input id="file-input" type="file" accept="audio/*" hidden />
+      </div>
+
+      <section class="dock-group">
+        <label for="sensitivity">Sensitivity <span class="val" id="sensitivity-val">1.00</span></label>
+        <input id="sensitivity" type="range" min="0.2" max="3" step="0.05" value="1" />
+      </section>
+
+      <div id="meters" aria-hidden="true">
+        <div class="meter"><span>Bass</span><div class="bar"><i id="m-bass"></i></div></div>
+        <div class="meter"><span>Mid</span><div class="bar"><i id="m-mid"></i></div></div>
+        <div class="meter"><span>Treble</span><div class="bar"><i id="m-treble"></i></div></div>
+        <div class="meter"><span>Energy</span><div class="bar"><i id="m-energy"></i></div></div>
+      </div>
+
+      <p id="audio-msg"></p>
+    </aside>
+
+    <aside id="dock">
+      <section class="dock-group">
+        <label for="api-key">Moth Atlas API Key</label>
+        <input id="api-key" type="password" placeholder="sk-moth-..." autocomplete="off" />
+      </section>
+
+      <section class="dock-group">
+        <label for="geometry-select">Geometry</label>
+        <select id="geometry-select">
+          <option value="torusknot35">Torus Knot (3, 5)</option>
+          <option value="torusknot23">Torus Knot (2, 3)</option>
+          <option value="quantumIcosahedron">Quantum Icosahedron</option>
+          <option value="geodesicSphere" selected>Geodesic Sphere</option>
+          <option value="kleinTorus">Klein Torus</option>
+        </select>
+      </section>
+
+      <section class="dock-group">
+        <label for="reflectance">Reflectance <span class="val" id="reflectance-val">0.20</span></label>
+        <input id="reflectance" type="range" min="0" max="1" step="0.05" value="0.2" />
+      </section>
+
+      <section class="dock-group">
+        <label for="absorption">Absorption <span class="val" id="absorption-val">0.50</span></label>
+        <input id="absorption" type="range" min="0" max="1" step="0.05" value="0.5" />
+      </section>
+
+      <section class="dock-group">
+        <label for="layers">Layers <span class="val" id="layers-val">2</span></label>
+        <input id="layers" type="range" min="1" max="4" step="1" value="2" />
+      </section>
+
+      <section class="dock-group">
+        <label for="incoming-rays">Incoming Rays <span class="val" id="incoming-rays-val">8</span></label>
+        <input id="incoming-rays" type="range" min="1" max="16" step="1" value="8" />
+      </section>
+
+      <section class="dock-group">
+        <label for="style">Style</label>
+        <select id="style">
+          <option value="peaked">Peaked</option>
+          <option value="frustrated">Frustrated</option>
+          <option value="3-body">3-body</option>
+          <option value="constrained">Constrained</option>
+        </select>
+      </section>
+
+      <section class="dock-group">
+        <label for="interaction">Interaction <span class="val" id="interaction-val">1.00</span></label>
+        <input id="interaction" type="range" min="-2" max="2" step="0.1" value="1.0" />
+      </section>
+
+      <section class="dock-group toggle-row">
+        <label for="auto-rotate">Auto-rotate</label>
+        <input id="auto-rotate" type="checkbox" checked />
+      </section>
+
+      <button id="synthesize-btn">Synthesize Quantum BSDF</button>
+
+      <p id="error-msg"></p>
+    </aside>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
