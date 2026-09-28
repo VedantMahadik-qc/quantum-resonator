@@ -24,6 +24,9 @@ export const audioDisplacementChunk = /* glsl */ `
 // Shared by the fallback material and (unless the Moth engine supplies its
 // own) the quantum material — outputs everything either fragment stage
 // needs: the normal, world position, and view direction.
+// vNormal and vViewDir are both in VIEW space so dot(N, V) is a true
+// cos(theta) from any camera angle; vWorldPos stays in world space for the
+// spatial phase / thickness patterns.
 export const iridescentVertexShader = /* glsl */ `
   ${audioDisplacementChunk}
   varying vec3 vNormal;
@@ -33,10 +36,10 @@ export const iridescentVertexShader = /* glsl */ `
   void main() {
     vNormal = normalize(normalMatrix * normal);
     vec3 displacedPos = audioDisplace(position, normal);
-    vec4 worldPos = modelMatrix * vec4(displacedPos, 1.0);
-    vWorldPos = worldPos.xyz;
-    vViewDir = normalize(cameraPosition - worldPos.xyz);
-    gl_Position = projectionMatrix * viewMatrix * worldPos;
+    vWorldPos = (modelMatrix * vec4(displacedPos, 1.0)).xyz;
+    vec4 mvPosition = modelViewMatrix * vec4(displacedPos, 1.0);
+    vViewDir = normalize(-mvPosition.xyz); // camera sits at the view-space origin
+    gl_Position = projectionMatrix * mvPosition;
   }
 `;
 
@@ -63,6 +66,7 @@ export const iridescentFragmentShader = /* glsl */ `
   }
 
   void main() {
+    // Both view space (see vertex stage), so this is the real incidence angle.
     vec3 norm = normalize(vNormal);
     vec3 viewDir = normalize(vViewDir);
     float cosTheta = clamp(dot(norm, viewDir), 0.0, 1.0);
@@ -78,6 +82,7 @@ export const iridescentFragmentShader = /* glsl */ `
     vec3 filmColor = thinFilm(cosTheta, thicknessNm, uInteraction + spatialPhase);
 
     // Two-point specular interference highlights so lit faces shimmer too.
+    // Directions are view space, i.e. camera-relative studio lights.
     vec3 lightDir1 = normalize(vec3(1.5, 2.0, 2.5));
     vec3 lightDir2 = normalize(vec3(-2.0, -1.0, -1.5));
     vec3 H1 = normalize(lightDir1 + viewDir);
