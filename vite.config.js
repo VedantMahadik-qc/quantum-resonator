@@ -29,6 +29,7 @@ function downloadProxyPlugin() {
 }
 
 export default defineConfig({
+  base: './', // relative asset paths so the build also works from a GitHub Pages subpath
   plugins: [downloadProxyPlugin()],
   server: {
     proxy: {

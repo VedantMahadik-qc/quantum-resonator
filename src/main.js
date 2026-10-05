@@ -1,6 +1,6 @@
 import './style.css';
 import { createScene } from './scene.js';
-import { probeEngine, generateQuantumShader } from './mothShader.js';
+import { probeEngine, generateQuantumShader, parseShaderZip } from './mothShader.js';
 import * as audioEngine from './audioEngine.js';
 import { recordCanvas } from './recorder.js';
 
@@ -277,4 +277,28 @@ synthesizeBtn.addEventListener('click', async () => {
   }
 });
 
-setStatus('idle', 'QUANTUM BSDF: IDLE');
+// --- bundled quantum materials ---
+// public/quantum/<style>.zip are untouched entanglement-shader-v1 results, so the
+// quantum material works with no API key or dev proxy (e.g. on GitHub Pages).
+const presetSelect = document.getElementById('preset-select');
+async function loadPreset(style) {
+  if (!style) {
+    scene.resetToFallback();
+    setStatus('idle', 'CLASSICAL THIN-FILM SHADER');
+    return;
+  }
+  setStatus('running', 'QUANTUM BSDF: LOADING BUNDLED RESULT...');
+  try {
+    const res = await fetch(`${import.meta.env.BASE_URL}quantum/${style}.zip`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    scene.applyQuantumShader(await parseShaderZip(await res.arrayBuffer()));
+    setStatus('compiled', `QUANTUM BSDF: ${presetSelect.selectedOptions[0].text.toUpperCase()}`);
+  } catch (err) {
+    console.error('[Moth Atlas] bundled material failed:', err);
+    setStatus('error', 'QUANTUM BSDF: ERROR — USING FALLBACK');
+    setError(err.message);
+    scene.resetToFallback();
+  }
+}
+presetSelect.addEventListener('change', () => loadPreset(presetSelect.value));
+loadPreset(presetSelect.value);

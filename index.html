@@ -61,7 +61,18 @@
 
     <aside id="dock">
       <section class="dock-group">
-        <label for="api-key">Moth Atlas API Key</label>
+        <label for="preset-select">Quantum material (bundled Atlas results)</label>
+        <select id="preset-select">
+          <option value="frustrated" selected>Frustrated</option>
+          <option value="peaked">Peaked</option>
+          <option value="constrained">Constrained</option>
+          <option value="frustrated_neg">Frustrated, interaction −1</option>
+          <option value="">Classical thin-film (no quantum)</option>
+        </select>
+      </section>
+
+      <section class="dock-group">
+        <label for="api-key">Moth Atlas API Key (live synthesis, npm run dev)</label>
         <input id="api-key" type="password" placeholder="sk-moth-..." autocomplete="off" />
       </section>
 
