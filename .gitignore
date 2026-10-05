@@ -10,3 +10,4 @@ work/
 .agents/
 .claude/
 skills-lock.json
+render-frames/

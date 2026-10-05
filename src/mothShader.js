@@ -94,8 +94,15 @@ export async function generateQuantumShader(apiKey, params, { onStatus, signal }
   const assetRes = await fetchZip(downloadUrl, signal);
   if (!assetRes.ok) throw new Error(`Downloading shader asset failed: ${assetRes.status}`);
 
+  return parseShaderZip(await assetRes.arrayBuffer());
+}
+
+// Turn an entanglement-shader-v1 result ZIP into { fragmentShader, uniforms }.
+// Used for live API results and for saved results bundled with the app
+// (public/quantum/*.zip, loaded by the offline renderer).
+export async function parseShaderZip(arrayBuffer) {
   const { default: JSZip } = await import('jszip');
-  const archive = await JSZip.loadAsync(await assetRes.arrayBuffer());
+  const archive = await JSZip.loadAsync(arrayBuffer);
   console.log('[Moth Atlas] archive contents:', Object.keys(archive.files));
 
   const shaderFile = archive.file(RESULT_GLSL_FILENAME);
@@ -134,7 +141,8 @@ async function loadHdrTexture(archive, filename) {
     );
     texture.minFilter = THREE.LinearFilter;
     texture.magFilter = THREE.LinearFilter;
-    texture.wrapS = THREE.ClampToEdgeWrapping;
+    // Per the engine's GLSL header: the s (phase) axis is periodic, t (angle) is clamped.
+    texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.ClampToEdgeWrapping;
     texture.needsUpdate = true;
     console.log(`[Moth Atlas] parsed ${filename}:`, parsed.width, 'x', parsed.height);

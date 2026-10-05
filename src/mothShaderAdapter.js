@@ -77,55 +77,43 @@ void main() {
 `;
 }
 
-// Stable, energy-conserving Cook-Torrance microfacet BRDF driven by Moth's
-// own reflectance/transmittance outputs. The Smith geometric shadowing term
-// (G) is what keeps this from blowing out to white at grazing angles — the
-// previous version divided by (NdotL * NdotV) alone with no compensating
-// term, which is the classic Cook-Torrance singularity at silhouette edges.
-const COOK_TORRANCE_COMBINE = /* glsl */ `
+// Shades the surface with Moth's own outputs. outReflectance is the quantum
+// stack's reflectance per RGB wavelength (sampled from R_lut at this view angle and
+// film thickness), so it is used as the visible colour of the surface under a soft
+// key light, with a specular glint and grazing-angle sheen in the same colour.
+// outTransmittance (T_lut) shows up as light passing through on the back-lit side.
+// The quantum bands are pastel (chroma ~0.2), so chroma is widened around the
+// luminance by FILM_CHROMA (2.3) for display; hue and angle dependence are unchanged.
+// (An earlier version used R only as a Fresnel term on a near-black base, which
+// hid the quantum colours everywhere except tiny highlights.)
+const FILM_COMBINE = /* glsl */ `
+  const float FILM_CHROMA = 2.3;
   vec3 N = normalize(vNormal);
   vec3 V = normalize(vViewDir);
   vec3 L = normalize(vec3(1.2, 1.8, 1.5));
   vec3 H = normalize(L + V);
 
-  float NdotL = max(dot(N, L), 0.0);
-  float NdotV = max(dot(N, V), 0.001);
-  float NdotH = max(dot(N, H), 0.0);
+  vec3 R = max(outReflectance.rgb, 0.0);
+  vec3 T = max(outTransmittance.rgb, 0.0);
+  float lum = dot(R, vec3(0.299, 0.587, 0.114));
+  vec3 film = max(mix(vec3(lum), R, FILM_CHROMA), 0.0);
 
-  // Quantum spectral Fresnel directly from Moth's lookup.
-  vec3 F = clamp(outReflectance.rgb, 0.0, 1.0);
+  float NdotL = dot(N, L);
+  float NdotV = max(dot(N, V), 0.0);
+  float wrapped = clamp((NdotL + 0.6) / 1.6, 0.0, 1.0);
+  float glint = pow(max(dot(N, H), 0.0), 90.0);
+  float rim = pow(1.0 - NdotV, 3.0);
 
-  // GGX normal distribution.
-  float roughness = 0.25;
-  float a = roughness * roughness;
-  float a2 = a * a;
-  float dDenom = (NdotH * NdotH * (a2 - 1.0) + 1.0);
-  float D = a2 / (3.14159265 * dDenom * dDenom);
-
-  // Smith geometric shadowing — prevents the edge blowout.
-  float k = (roughness + 1.0) * (roughness + 1.0) / 8.0;
-  float gV = NdotV / (NdotV * (1.0 - k) + k);
-  float gL = NdotL / (NdotL * (1.0 - k) + k);
-  float G = gV * gL;
-
-  vec3 specular = (D * G * F) / max(4.0 * NdotV, 0.001);
-
-  vec3 baseAlbedo = vec3(0.04); // deep dark base
-  vec3 diffuse = baseAlbedo * (vec3(1.0) - F) * NdotL;
-
-  // Controlled edge Fresnel sheen, capped brightness.
-  float fresnelFactor = pow(1.0 - NdotV, 4.0);
-  vec3 edgeSheen = F * fresnelFactor * 0.45;
-
-  vec3 backScatter = clamp(outTransmittance.rgb, 0.0, 1.0) * 0.12 * max(-dot(N, L), 0.0);
-
-  vec3 finalColor = diffuse + specular * 1.2 + edgeSheen + backScatter;
-  gl_FragColor = vec4(clamp(finalColor, 0.0, 1.0), 1.0);
+  vec3 color = film * (0.16 + 0.62 * wrapped)
+             + film * glint * 1.4
+             + film * rim * 0.45
+             + T * (0.55 * max(-NdotL, 0.0) + 0.25 * rim);
+  gl_FragColor = vec4(clamp(color, 0.0, 2.0), 1.0);
 `;
 
 function buildOutputCombine(outputNames) {
   if (outputNames.includes('outReflectance') && outputNames.includes('outTransmittance')) {
-    return COOK_TORRANCE_COMBINE;
+    return FILM_COMBINE;
   }
   if (outputNames.length > 0) {
     const sum = outputNames.map((n) => `${n}.rgb`).join(' + ');

@@ -78,22 +78,26 @@ function createQuantumSpectralTexture(size = 128, offset = 0) {
   return texture;
 }
 
-export function createScene(canvas, { onFps, getAudioLevels } = {}) {
+// `manual: true` (offline renderer, see render.html) skips the rAF loop and the
+// resize handling: the caller drives frames with step(dt, levels) at a fixed size.
+export function createScene(canvas, { onFps, getAudioLevels, manual = false, width, height } = {}) {
+  const W = width || window.innerWidth;
+  const H = height || window.innerHeight;
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x030106);
   scene.fog = new THREE.FogExp2(0x030106, 0.05);
 
   const camera = new THREE.PerspectiveCamera(
     45,
-    window.innerWidth / window.innerHeight,
+    W / H,
     0.1,
     100
   );
   camera.position.set(0, 0.6, 5.5);
 
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, preserveDrawingBuffer: manual });
+  renderer.setPixelRatio(manual ? 1 : Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(W, H);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 0.85;
 
@@ -117,7 +121,7 @@ export function createScene(canvas, { onFps, getAudioLevels } = {}) {
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
   const bloomPass = new UnrealBloomPass(
-    new THREE.Vector2(window.innerWidth, window.innerHeight),
+    new THREE.Vector2(W, H),
     0.35, // strength
     0.35, // radius
     0.88 // threshold — only specular rim highlights should bloom
@@ -259,20 +263,19 @@ export function createScene(canvas, { onFps, getAudioLevels } = {}) {
     renderer.setSize(window.innerWidth, window.innerHeight);
     composer.setSize(window.innerWidth, window.innerHeight);
   }
-  window.addEventListener('resize', onResize);
+  if (!manual) window.addEventListener('resize', onResize);
 
   // --- animation loop / fps ---
   const clock = new THREE.Clock();
   let frames = 0;
   let fpsAccum = 0;
 
-  function tick() {
-    const dt = clock.getDelta();
+  // One frame of simulation + render. `raw` = audio levels for this frame.
+  function step(dt, raw) {
     uniforms.uTime.value += dt;
     uniforms.uCameraPos.value.copy(camera.position);
 
     // Frame-rate independent exponential smoothing toward the raw levels.
-    const raw = getAudioLevels?.();
     if (raw) {
       const k = 1 - Math.exp(-AUDIO_SMOOTHING * dt);
       for (const key in audio) audio[key] += ((raw[key] ?? 0) - audio[key]) * k;
@@ -283,8 +286,13 @@ export function createScene(canvas, { onFps, getAudioLevels } = {}) {
     // Capped so bass alone can never push bloom above 0.5 (0.35 + 1.0*0.15).
     bloomPass.strength = BLOOM_BASE_STRENGTH + audio.bass * 0.15;
 
-    controls.update();
+    if (!manual) controls.update();
     composer.render(dt);
+  }
+
+  function tick() {
+    const dt = clock.getDelta();
+    step(dt, getAudioLevels?.());
 
     frames += 1;
     fpsAccum += dt;
@@ -296,9 +304,12 @@ export function createScene(canvas, { onFps, getAudioLevels } = {}) {
 
     requestAnimationFrame(tick);
   }
-  requestAnimationFrame(tick);
+  if (!manual) requestAnimationFrame(tick);
 
   return {
+    step,
+    camera,
+    getMesh: () => mesh,
     setMesh,
     setUniform,
     setAutoRotate,
